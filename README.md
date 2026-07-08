@@ -91,7 +91,7 @@ The Flask layer doesn't run the pipeline inline — it kicks off a background th
 
 | Input | Live Progress | Final Report |
 |---|---|---|
-| ![Input screen](docs/screenshot-input.png) | ![Live progress log](docs/screenshot-progress.png) | ![Report view](docs/screenshot-report.png) |
+| ![Input screen](demo/demo1.jpg) | ![Live progress log](docs/screenshot-progress.png) | ![Report view](docs/screenshot-report.png) |
 
 ## Setup
 
