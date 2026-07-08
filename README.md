@@ -151,7 +151,7 @@ Being upfront about this is more useful than pretending it's production-hardened
 - **Unbounded thread-per-job** — every `/api/start` call spawns a new thread with no cap. Fine at small scale; at real concurrency I'd replace this with a bounded worker pool (`ThreadPoolExecutor`) or a real task queue (Celery + Redis) so requests queue instead of all firing at once.
 - **SQLite for history** — simple and fine for a single-instance demo; a multi-instance deployment would need Postgres.
 - **No auth on `/api/start`** — anyone with the URL can trigger a run (and burn API quota). A real deployment would gate this behind an API key or login.
-- **Hardcoded `SECRET_KEY`** — should be pulled from an environment variable, not committed in code.
+- **Open-access papers only** — the pipeline retrieves PDFs directly from OpenAlex's open-access links; it can't pull paywalled papers behind publisher subscriptions (Elsevier, Springer, IEEE, etc.), since that would require institutional access or per-publisher API agreements. This means review coverage depends on how much open-access literature exists for a topic — strong for fields like ML/CS with heavy arXiv presence, weaker for fields where most work sits behind paywalls.
 - **Ephemeral storage on most free hosting tiers** — generated PDFs/DB can be wiped on redeploy, so this is currently run locally / demoed via video rather than kept permanently live.
 
 ## Project structure
