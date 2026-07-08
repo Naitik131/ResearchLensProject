@@ -1,6 +1,6 @@
 # ResearchLens — Multi-Agent Literature Review System
 
-A LangGraph-based multi-agent pipeline that turns a research topic into a full literature review — automatically searching, downloading, reading, and synthesizing academic papers — wrapped in a Flask web app with live progress streaming, history tracking, and Markdown/PDF export.
+A LangGraph-based multi-agent pipeline that turns a research topic into a full literature review — automatically searching, downloading, reading, and synthesizing academic papers wrapped in a Flask web app with live progress streaming, history tracking, and Markdown/PDF export.
 
 > Type a topic → watch the agents search, fetch, and read papers in real time → get a publication-style literature review as Markdown or PDF.
 
