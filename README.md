@@ -8,7 +8,7 @@ A LangGraph-based multi-agent pipeline that turns a research topic into a full l
   <img src="docs/demo.gif" alt="ResearchLens demo" width="800">
 </p>
 
-*(Full pipeline run takes 3–10 minutes depending on topic breadth and paper availability — the clip above is sped up. See [Performance](#performance--bottlenecks) below for where the time actually goes.)*
+*(Full pipeline run takes 3–10 minutes depending on topic breadth and paper availability. See [Performance](#performance--bottlenecks) below for where the time actually goes.)*
 
 ---
 
