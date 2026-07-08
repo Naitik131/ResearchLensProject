@@ -1,1 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResearchLens — AI Literature Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<!-- marked.js for markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+<style>
+/* ── Reset & Base ────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #0a0a14;
+  --bg2:        #0f0f1f;
+  --bg3:        #141428;
+  --card:       #12122a;
+  --border:     #1e1e40;
+  --border2:    #2a2a5a;
+  --indigo:     #6366f1;
+  --indigo2:    #4f46e5;
+  --indigo3:    #818cf8;
+  --violet:     #a78bfa;
+  --cyan:       #22d3ee;
+  --green:      #34d399;
+  --yellow:     #fbbf24;
+  --red:        #f87171;
+  --text:       #e2e8f0;
+  --text2:      #94a3b8;
+  --text3:      #64748b;
+  --mono:       'JetBrains Mono', monospace;
+  --sans:       'Inter', sans-serif;
+  --serif:      'Playfair Display', serif;
+  --radius:     12px;
+  --radius2:    8px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Animated starfield bg ───────────────────────────────────────────── */
+#stars-canvas {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; opacity: 0.4;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────── */
+.app {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: 64px 1fr;
+  min-height: 100vh;
+}
+
+/* ── Topbar ──────────────────────────────────────────────────────────── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 24px;
+  background: rgba(10,10,20,0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--indigo3), var(--violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-left: 2px;
+}
+
+.topbar-spacer { flex: 1; }
+
+.topbar-badge {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--indigo3);
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.3);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px 20px 12px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-empty {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+.sidebar-empty .icon { font-size: 2rem; margin-bottom: 8px; opacity: 0.4; }
+
+.history-item {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+.history-item:hover { background: rgba(99,102,241,0.06); }
+.history-item.active { background: rgba(99,102,241,0.12); border-left: 3px solid var(--indigo); }
+
+.history-topic {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-meta {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+
+.history-date {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+}
+
+.status-badge {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.status-done    { background: rgba(52,211,153,0.15); color: var(--green); }
+.status-running { background: rgba(99,102,241,0.15); color: var(--indigo3); }
+.status-error   { background: rgba(248,113,113,0.15); color: var(--red); }
+
+.history-actions {
+  display: flex; gap: 6px; margin-top: 8px;
+}
+
+.dl-btn {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--indigo3);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.dl-btn:hover { background: rgba(99,102,241,0.15); border-color: var(--indigo); }
+
+.view-btn {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--violet);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.view-btn:hover { background: rgba(167,139,250,0.1); border-color: var(--violet); }
+
+/* ── Main panel ──────────────────────────────────────────────────────── */
+.main {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Hero / input ────────────────────────────────────────────────────── */
+.hero {
+  padding: 48px 48px 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-title {
+  font-family: var(--serif);
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, #fff 30%, var(--violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-sub {
+  color: var(--text3);
+  font-size: 0.9rem;
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+.input-row {
+  display: flex; gap: 12px; align-items: flex-end;
+}
+
+.input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.topic-input {
+  width: 100%;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  padding: 14px 18px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  resize: none;
+  line-height: 1.5;
+  min-height: 54px;
+  max-height: 120px;
+}
+
+.topic-input:focus {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+.topic-input::placeholder { color: var(--text3); }
+
+.run-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, var(--indigo2), #7c3aed);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 14px 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  height: 54px;
+}
+.run-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+}
+.run-btn:disabled {
+  opacity: 0.5; cursor: not-allowed; transform: none;
+}
+
+.run-btn .btn-icon { font-size: 1.1rem; }
+
+/* ── Pipeline nodes strip ────────────────────────────────────────────── */
+.pipeline {
+  display: flex; align-items: center; gap: 0;
+  padding: 0 48px;
+  margin-top: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pipeline::-webkit-scrollbar { display: none; }
+
+.pipe-node {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0;
+}
+
+.pipe-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem;
+  transition: all 0.4s;
+  position: relative;
+}
+
+.pipe-label {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--text3);
+  text-align: center;
+  max-width: 60px;
+  line-height: 1.3;
+}
+
+.pipe-connector {
+  width: 24px; height: 2px;
+  background: var(--border2);
+  flex-shrink: 0;
+  margin-top: -12px;
+  transition: background 0.4s;
+}
+
+.pipe-node.done .pipe-dot {
+  background: rgba(52,211,153,0.2);
+  border-color: var(--green);
+  color: var(--green);
+}
+.pipe-node.active .pipe-dot {
+  background: rgba(99,102,241,0.3);
+  border-color: var(--indigo3);
+  color: var(--indigo3);
+  box-shadow: 0 0 12px rgba(99,102,241,0.5);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+.pipe-connector.done { background: var(--green); }
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 8px rgba(99,102,241,0.4); }
+  50% { box-shadow: 0 0 18px rgba(99,102,241,0.8); }
+}
+
+/* ── Content area ────────────────────────────────────────────────────── */
+.content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Idle state ──────────────────────────────────────────────────────── */
+.idle-state {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px;
+  color: var(--text3);
+  text-align: center;
+  padding: 40px;
+}
+
+.idle-icon {
+  font-size: 4rem;
+  opacity: 0.3;
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.idle-title {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  color: var(--text2);
+}
+
+.idle-hints {
+  list-style: none;
+  text-align: left;
+  font-size: 0.82rem;
+  line-height: 2;
+}
+
+.idle-hints li::before { content: "↗ "; color: var(--indigo3); }
+
+/* ── Running state: two-pane ─────────────────────────────────────────── */
+.running-state {
+  flex: 1;
+  display: flex; overflow: hidden;
+}
+
+.log-pane {
+  width: 380px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+
+.log-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.log-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 1s ease-in-out infinite;
+}
+.log-pulse.stopped { background: var(--text3); animation: none; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.log-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.log-line {
+  display: flex; gap: 10px;
+  padding: 2px 18px;
+  align-items: baseline;
+  transition: background 0.1s;
+}
+.log-line:hover { background: rgba(255,255,255,0.03); }
+
+.log-ts { color: var(--text3); flex-shrink: 0; }
+.log-msg { flex: 1; word-break: break-word; }
+
+.log-info    .log-msg { color: var(--text2); }
+.log-step    .log-msg { color: var(--indigo3); font-weight: 500; }
+.log-success .log-msg { color: var(--green); }
+.log-warn    .log-msg { color: var(--yellow); }
+.log-error   .log-msg { color: var(--red); }
+
+/* ── Report pane ─────────────────────────────────────────────────────── */
+.report-pane {
+  flex: 1; overflow-y: auto;
+  padding: 32px 44px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.report-waiting {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 20px; color: var(--text3);
+}
+
+.spinner {
+  width: 48px; height: 48px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--indigo);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.report-done-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-done-bar h2 {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  color: var(--text2);
+  flex: 1;
+}
+
+/* ── Markdown rendering ──────────────────────────────────────────────── */
+.md-body { max-width: 840px; }
+.md-body h1 {
+  font-family: var(--serif);
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #fff;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--indigo);
+}
+.md-body h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--indigo3);
+  margin-top: 36px; margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.md-body h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--violet);
+  margin-top: 24px; margin-bottom: 8px;
+}
+.md-body p { color: var(--text2); line-height: 1.8; margin-bottom: 12px; font-size: 0.9rem; }
+.md-body ul, .md-body ol { color: var(--text2); padding-left: 22px; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.9; }
+.md-body li { margin-bottom: 4px; }
+.md-body code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.2);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--indigo3);
+}
+.md-body pre {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius2);
+  padding: 16px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+.md-body pre code {
+  background: none; border: none; padding: 0; color: var(--cyan);
+  font-size: 0.78rem;
+}
+.md-body table {
+  width: 100%; border-collapse: collapse;
+  margin: 16px 0; font-size: 0.78rem;
+}
+.md-body thead tr { background: rgba(99,102,241,0.15); }
+.md-body th {
+  padding: 10px 14px; text-align: left;
+  color: var(--indigo3); font-weight: 600;
+  border-bottom: 2px solid var(--indigo2);
+}
+.md-body td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+.md-body tr:hover td { background: rgba(255,255,255,0.02); }
+.md-body blockquote {
+  border-left: 3px solid var(--indigo);
+  margin: 16px 0;
+  padding: 8px 18px;
+  background: rgba(99,102,241,0.05);
+  border-radius: 0 var(--radius2) var(--radius2) 0;
+  color: var(--text2);
+  font-style: italic;
+}
+.md-body strong { color: var(--text); }
+
+/* ── Download bar at bottom ──────────────────────────────────────────── */
+.dl-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 44px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+
+.dl-bar-label { font-size: 0.78rem; color: var(--text3); flex: 1; }
+
+.btn-dl {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--radius2);
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1.5px solid;
+}
+
+.btn-dl-md {
+  border-color: var(--indigo3);
+  color: var(--indigo3);
+  background: rgba(99,102,241,0.08);
+}
+.btn-dl-md:hover { background: rgba(99,102,241,0.18); }
+
+.btn-dl-pdf {
+  border-color: var(--violet);
+  color: var(--violet);
+  background: rgba(167,139,250,0.08);
+}
+.btn-dl-pdf:hover { background: rgba(167,139,250,0.18); }
+
+/* ── Notifications ───────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 0.82rem;
+  color: var(--text);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 1000;
+  max-width: 320px;
+  animation: slide-in 0.3s ease;
+  display: flex; align-items: center; gap: 10px;
+}
+.toast-success { border-left: 4px solid var(--green); }
+.toast-error   { border-left: 4px solid var(--red); }
+.toast-info    { border-left: 4px solid var(--indigo3); }
+
+@keyframes slide-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Scrollbar styling ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--indigo3); }
+
+/* ── Modal overlay for viewing report from history ───────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  width: 100%; max-width: 900px;
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.modal-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-family: var(--serif);
+  font-size: 1rem;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-close {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 1.2rem; padding: 4px;
+  line-height: 1; transition: color 0.15s;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-body {
+  flex: 1; overflow-y: auto;
+  padding: 28px 32px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<div class="app">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div>
+      <div class="logo">ResearchLens</div>
+      <div class="logo-sub">AI Literature Review Engine</div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-badge">Gemini · LangGraph · OpenAlex</div>
+  </header>
+
+  <!-- Sidebar: History -->
+  <aside class="sidebar">
+    <div class="sidebar-header">Past Reviews</div>
+    <div id="history-list">
+      <div class="sidebar-empty">
+        <div class="icon">🗂️</div>
+        No reviews yet.<br>Generate your first report to see it here.
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- Input hero -->
+    <div class="hero">
+      <div class="hero-title">Generate a Literature Review</div>
+      <div class="hero-sub">Enter any research topic — the engine searches OpenAlex, downloads papers, extracts data, and writes a structured multi-section review.</div>
+
+      <div class="input-row">
+        <div class="input-wrap">
+          <textarea
+            id="topic-input"
+            class="topic-input"
+            placeholder="e.g. Machine learning for concrete strength prediction · BERT in biomedical NLP · Climate impact on renewable energy forecasting"
+            rows="2"
+          ></textarea>
+        </div>
+        <button id="run-btn" class="run-btn">
+          <span class="btn-icon">🔬</span>
+          <span id="run-btn-label">Generate Review</span>
+        </button>
+      </div>
+
+      <!-- Pipeline visualizer -->
+      <div class="pipeline" id="pipeline">
+        <!-- generated by JS -->
+      </div>
+    </div>
+
+    <!-- Content area -->
+    <div class="content-area" id="content-area">
+
+      <!-- Idle -->
+      <div class="idle-state" id="idle-state">
+        <div class="idle-icon">🔭</div>
+        <div class="idle-title">Your review will appear here</div>
+        <ul class="idle-hints">
+          <li>Searches open-access papers from OpenAlex</li>
+          <li>Downloads and extracts full PDF text</li>
+          <li>Runs parallel worker agents per section</li>
+          <li>Generates Markdown + PDF report</li>
+        </ul>
+      </div>
+
+      <!-- Running -->
+      <div class="running-state" id="running-state" style="display:none">
+        <div class="log-pane">
+          <div class="log-header">
+            <div class="log-pulse" id="log-pulse"></div>
+            <span>Live Progress Log</span>
+          </div>
+          <div class="log-scroll" id="log-scroll"></div>
+        </div>
+        <div class="report-pane" id="report-pane">
+          <div class="report-waiting">
+            <div class="spinner"></div>
+            <div>Pipeline running — report will appear here when ready</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Download bar (hidden until done) -->
+    <div class="dl-bar" id="dl-bar" style="display:none">
+      <span class="dl-bar-label" id="dl-bar-label">Report ready</span>
+      <a id="dl-md-btn"  class="btn-dl btn-dl-md"  href="#" download>⬇ Markdown</a>
+      <a id="dl-pdf-btn" class="btn-dl btn-dl-pdf" href="#" download>⬇ PDF</a>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal for viewing past reports -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Report</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="md-body" id="modal-body"></div>
+    </div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+// ── Starfield ─────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function init() {
+    resize();
+    stars = Array.from({length: 120}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2,
+      o: Math.random() * 0.6 + 0.1,
+      speed: Math.random() * 0.3 + 0.05
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(180,170,255,${s.o})`;
+      ctx.fill();
+      s.y += s.speed;
+      if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', init);
+  init(); draw();
+})();
+
+// ── Pipeline nodes ────────────────────────────────────────────────────────
+const PIPELINE_NODES = [
+  { id: 'classifier', label: 'Classify', icon: '🔍' },
+  { id: 'search',     label: 'Search',   icon: '📚' },
+  { id: 'dedup',      label: 'Dedup',    icon: '🔄' },
+  { id: 'download',   label: 'Download', icon: '⬇️' },
+  { id: 'extract',    label: 'Extract',  icon: '📄' },
+  { id: 'summarize',  label: 'Summarize',icon: '🧠' },
+  { id: 'plan',       label: 'Plan',     icon: '🗺️' },
+  { id: 'workers',    label: 'Workers',  icon: '⚙️' },
+  { id: 'synthesize', label: 'Synthesize',icon: '🔗' },
+  { id: 'assemble',   label: 'Assemble', icon: '📝' },
+];
+
+function buildPipeline() {
+  const el = document.getElementById('pipeline');
+  el.innerHTML = '';
+  PIPELINE_NODES.forEach((n, i) => {
+    const node = document.createElement('div');
+    node.className = 'pipe-node';
+    node.id = `pipe-${n.id}`;
+    node.innerHTML = `
+      <div class="pipe-dot" title="${n.label}">${n.icon}</div>
+      <div class="pipe-label">${n.label}</div>
+    `;
+    el.appendChild(node);
+    if (i < PIPELINE_NODES.length - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'pipe-connector';
+      conn.id = `conn-${n.id}`;
+      el.appendChild(conn);
+    }
+  });
+}
+buildPipeline();
+
+function setPipelineActive(nodeId) {
+  let found = false;
+  PIPELINE_NODES.forEach((n, i) => {
+    const node = document.getElementById(`pipe-${n.id}`);
+    const conn = document.getElementById(`conn-${n.id}`);
+    if (n.id === nodeId) {
+      found = true;
+      node.className = 'pipe-node active';
+    } else if (!found) {
+      node.className = 'pipe-node done';
+      if (conn) conn.className = 'pipe-connector done';
+    } else {
+      node.className = 'pipe-node';
+      if (conn) conn.className = 'pipe-connector';
+    }
+  });
+}
+
+function resetPipeline() {
+  PIPELINE_NODES.forEach(n => {
+    const node = document.getElementById(`pipe-${n.id}`);
+    const conn = document.getElementById(`conn-${n.id}`);
+    if (node) node.className = 'pipe-node';
+    if (conn) conn.className = 'pipe-connector';
+  });
+}
+
+function allPipelineDone() {
+  PIPELINE_NODES.forEach(n => {
+    const node = document.getElementById(`pipe-${n.id}`);
+    const conn = document.getElementById(`conn-${n.id}`);
+    if (node) node.className = 'pipe-node done';
+    if (conn) conn.className = 'pipe-connector done';
+  });
+}
+
+// pipeline heuristic from log message
+function inferPipelineStep(msg) {
+  const m = msg.toLowerCase();
+  if (m.includes('classif')) return 'classifier';
+  if (m.includes('searching openalex') || m.includes('queries')) return 'search';
+  if (m.includes('dedup')) return 'dedup';
+  if (m.includes('download')) return 'download';
+  if (m.includes('extract')) return 'extract';
+  if (m.includes('summariz')) return 'summarize';
+  if (m.includes('planning') || m.includes('review plan')) return 'plan';
+  if (m.includes('worker') || m.includes('dispatch')) return 'workers';
+  if (m.includes('synthes')) return 'synthesize';
+  if (m.includes('assembl')) return 'assemble';
+  return null;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let currentJobId = null;
+let currentEventSource = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span>${msg}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function appendLog(ts, msg, level) {
+  const el = document.getElementById('log-scroll');
+  const line = document.createElement('div');
+  line.className = `log-line log-${level}`;
+  line.innerHTML = `<span class="log-ts">${ts}</span><span class="log-msg">${escHtml(msg)}</span>`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showState(which) {
+  document.getElementById('idle-state').style.display    = which === 'idle'    ? '' : 'none';
+  document.getElementById('running-state').style.display = which === 'running' ? '' : 'none';
+}
+
+// ── History ───────────────────────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history');
+    const items = await res.json();
+    renderHistory(items);
+  } catch(e) { console.error(e); }
+}
+
+function renderHistory(items) {
+  const el = document.getElementById('history-list');
+  if (!items.length) {
+    el.innerHTML = `<div class="sidebar-empty">
+      <div class="icon">🗂️</div>
+      No reviews yet.<br>Generate your first report to see it here.
+    </div>`;
+    return;
+  }
+  el.innerHTML = items.map(item => {
+    const d = new Date(item.created_at);
+    const dateStr = d.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+    const statusBadge = `<span class="status-badge status-${item.status}">${item.status}</span>`;
+
+    const dlButtons = item.status === 'done' ? `
+      <a class="dl-btn" href="/api/download/${item.job_id}/md" download>⬇ MD</a>
+      ${item.pdf_path ? `<a class="dl-btn" href="/api/download/${item.job_id}/pdf" download>⬇ PDF</a>` : ''}
+      <button class="view-btn" onclick="openReport('${item.job_id}','${escHtml(item.topic).replace(/'/g,"\\'")}')">👁 View</button>
+    ` : '';
+
+    return `
+      <div class="history-item" id="hist-${item.job_id}">
+        <div class="history-topic">${escHtml(item.topic)}</div>
+        <div class="history-meta">
+          <span class="history-date">${dateStr} ${timeStr}</span>
+          ${statusBadge}
+        </div>
+        ${dlButtons ? `<div class="history-actions">${dlButtons}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Run pipeline ──────────────────────────────────────────────────────────
+document.getElementById('run-btn').addEventListener('click', startRun);
+document.getElementById('topic-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) startRun();
+});
+
+async function startRun() {
+  const topic = document.getElementById('topic-input').value.trim();
+  if (!topic) { showToast('Please enter a research topic', 'error'); return; }
+
+  const runBtn = document.getElementById('run-btn');
+  const runLabel = document.getElementById('run-btn-label');
+  runBtn.disabled = true;
+  runLabel.textContent = 'Running…';
+
+  // Reset UI
+  document.getElementById('log-scroll').innerHTML = '';
+  document.getElementById('dl-bar').style.display = 'none';
+  document.getElementById('log-pulse').className = 'log-pulse';
+  resetPipeline();
+  showState('running');
+
+  document.getElementById('report-pane').innerHTML = `
+    <div class="report-waiting">
+      <div class="spinner"></div>
+      <div>Pipeline running — report will appear here when ready</div>
+    </div>`;
+
+  // Start job
+  let jobId;
+  try {
+    const res = await fetch('/api/start', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({topic})
+    });
+    const data = await res.json();
+    if (data.error) { showToast(data.error, 'error'); resetRunBtn(); return; }
+    jobId = data.job_id;
+    currentJobId = jobId;
+  } catch(e) {
+    showToast('Failed to start pipeline', 'error');
+    resetRunBtn(); return;
+  }
+
+  // Refresh history immediately
+  await loadHistory();
+
+  // SSE stream
+  if (currentEventSource) currentEventSource.close();
+  const es = new EventSource(`/api/stream/${jobId}`);
+  currentEventSource = es;
+
+  es.onmessage = function(event) {
+    const d = JSON.parse(event.data);
+    if (d.type === 'ping') return;
+
+    if (d.type === 'log') {
+      appendLog(d.ts, d.msg, d.level);
+      const step = inferPipelineStep(d.msg);
+      if (step) setPipelineActive(step);
+    }
+
+    if (d.type === 'done') {
+      allPipelineDone();
+      document.getElementById('log-pulse').className = 'log-pulse stopped';
+      appendLog(new Date().toLocaleTimeString(), '✅ Pipeline complete!', 'success');
+      loadReport(d.job_id, d.md_path, d.pdf_path);
+      loadHistory();
+      resetRunBtn();
+      es.close();
+    }
+
+    if (d.type === 'error') {
+      appendLog(new Date().toLocaleTimeString(), `❌ ${d.msg}`, 'error');
+      document.getElementById('log-pulse').className = 'log-pulse stopped';
+      showToast('Pipeline error — check log', 'error');
+      resetRunBtn();
+      loadHistory();
+      es.close();
+    }
+  };
+
+  es.onerror = function() {
+    appendLog(new Date().toLocaleTimeString(), 'Stream disconnected', 'warn');
+    es.close();
+    resetRunBtn();
+  };
+}
+
+function resetRunBtn() {
+  const runBtn = document.getElementById('run-btn');
+  document.getElementById('run-btn-label').textContent = 'Generate Review';
+  runBtn.disabled = false;
+}
+
+async function loadReport(jobId, mdPath, pdfPath) {
+  try {
+    const res = await fetch(`/api/report/${jobId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    document.getElementById('report-pane').innerHTML = `
+      <div class="report-done-bar">
+        <h2>${escHtml(data.topic)}</h2>
+      </div>
+      <div class="md-body" id="live-md"></div>
+    `;
+    document.getElementById('live-md').innerHTML = marked.parse(data.content);
+
+    // Show download bar
+    const dlBar = document.getElementById('dl-bar');
+    dlBar.style.display = 'flex';
+    document.getElementById('dl-bar-label').textContent = `Report ready · ${escHtml(data.topic)}`;
+    document.getElementById('dl-md-btn').href = `/api/download/${jobId}/md`;
+    document.getElementById('dl-pdf-btn').href = pdfPath ? `/api/download/${jobId}/pdf` : '#';
+    if (!pdfPath) {
+      document.getElementById('dl-pdf-btn').style.opacity = '0.4';
+      document.getElementById('dl-pdf-btn').title = 'PDF generation unavailable';
+    }
+
+    showToast('🎉 Report ready!', 'success');
+  } catch(e) {
+    console.error('loadReport error', e);
+  }
+}
+
+// ── Modal viewer ──────────────────────────────────────────────────────────
+async function openReport(jobId, topic) {
+  document.getElementById('modal-title').textContent = topic;
+  document.getElementById('modal-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div class="spinner" style="margin:0 auto"></div></div>';
+  document.getElementById('modal').classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/report/${jobId}`);
+    const data = await res.json();
+    document.getElementById('modal-body').innerHTML = `<div class="md-body">${marked.parse(data.content)}</div>`;
+    document.getElementById('modal-footer').innerHTML = `
+      <a class="btn-dl btn-dl-md"  href="/api/download/${jobId}/md"  download>⬇ Markdown</a>
+      <a class="btn-dl btn-dl-pdf" href="/api/download/${jobId}/pdf" download>⬇ PDF</a>
+    `;
+  } catch(e) {
+    document.getElementById('modal-body').innerHTML = '<p style="color:var(--red)">Failed to load report</p>';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadHistory();
+setInterval(loadHistory, 15000);
+</script>
+</body>
+</html>
