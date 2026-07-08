@@ -71,7 +71,7 @@ User submits topic (POST /api/start)
  Final Markdown saved → converted to PDF (WeasyPrint) → SQLite updated (status: done)
 ```
 
-The Flask layer doesn't run the pipeline inline — it kicks off a background thread per job and immediately returns a `job_id`, then streams progress to the browser separately. This is what makes a 3–10 minute job usable from a web UI without the request timing out. Full breakdown in [How the async pipeline works](#how-the-async-pipeline-works).
+The Flask layer doesn't run the pipeline inline  it kicks off a background thread per job and immediately returns a `job_id`, then streams progress to the browser separately. This is what makes a 3–10 minute job usable from a web UI without the request timing out. Full breakdown in [How the async pipeline works](#how-the-async-pipeline-works).
 
 ## Tech stack
 
@@ -132,8 +132,8 @@ Then open **http://localhost:5000**.
 
 A single HTTP request can't hold a connection open for 10 minutes, so the app splits "start the job" from "watch the job" into two separate flows:
 
-1. **`POST /api/start`** — validates the topic, writes a new row to SQLite (`status='running'`), creates a `queue.Queue` for this job, and starts the pipeline in a background `threading.Thread`. It returns the `job_id` immediately — it does not wait for the pipeline to finish.
-2. **`GET /api/stream/<job_id>`** — opens a **Server-Sent Events** connection. As the background thread calls `progress(msg)` at each pipeline stage, messages land on that job's queue and get streamed to the browser as they happen — no polling, no refresh.
+1. **`POST /api/start`** — validates the topic, writes a new row to SQLite (`status='running'`), creates a `queue.Queue` for this job, and starts the pipeline in a background `threading.Thread`. It returns the `job_id` immediately  it does not wait for the pipeline to finish.
+2. **`GET /api/stream/<job_id>`** — opens a **Server-Sent Events** connection. As the background thread calls `progress(msg)` at each pipeline stage, messages land on that job's queue and get streamed to the browser as they happen  no polling, no refresh.
 3. When the pipeline finishes, the result is written to disk (Markdown + PDF), the SQLite row is updated to `status='done'`, and a final `done` event is pushed down the stream so the UI can show the download links.
 4. **`GET /api/download/<job_id>/<fmt>`** and **`GET /api/report/<job_id>`** serve the finished files/content on demand, looked up by `job_id` from SQLite — so results persist and are viewable later from the history sidebar, not just in the original session.
 
