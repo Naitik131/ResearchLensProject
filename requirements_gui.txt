@@ -1,0 +1,15 @@
+# Core pipeline (existing)
+langchain-google-genai
+langchain-core
+langgraph
+pymupdf
+requests
+python-dotenv
+pydantic
+
+# Flask GUI
+flask
+
+# PDF generation from markdown
+markdown
+weasyprint
